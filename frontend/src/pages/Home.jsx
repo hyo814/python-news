@@ -8,20 +8,38 @@ export default function Home() {
   const [editorial, setEditorial] = useState([]);
   const [crawled, setCrawled] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
+  const loadData = () => {
+    setLoading(true);
+    setError(false);
     Promise.all([
       fetchPosts('editorial'),
       fetchPosts('crawled'),
-    ]).then(([ed, cr]) => {
-      setEditorial(ed);
-      setCrawled(cr.slice(0, 5));
-      setLoading(false);
-    });
-  }, []);
+    ])
+      .then(([ed, cr]) => {
+        setEditorial(ed);
+        setCrawled(cr.slice(0, 5));
+      })
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { loadData(); }, []);
 
   if (loading) {
-    return <div className="text-center py-20 text-gray-400 text-base">불러오는 중...</div>;
+    return <div className="text-center py-20 text-gray-400 text-base">불러오는 중... (서버가 깨어나는 중일 수 있어요)</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-20">
+        <p className="text-gray-500 mb-4">서버 연결에 실패했습니다.</p>
+        <button onClick={loadData} className="px-4 py-2 bg-primary text-white rounded-md text-sm hover:bg-primary-light transition-colors">
+          다시 시도
+        </button>
+      </div>
+    );
   }
 
   const featured = editorial.find(p => p.is_featured);
