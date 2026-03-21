@@ -1,0 +1,25 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+db.sqlite3
+media/
+crawl.log
+
+# IDE
+.idea/
+
+# Claude
+.claude/
+
+# Django
+*.log
+migrations/
+
+# Node
+node_modules/
+frontend/dist/
+
+# OS
+.DS_Store
