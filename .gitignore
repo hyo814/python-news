@@ -15,7 +15,7 @@ crawl.log
 
 # Django
 *.log
-migrations/
+staticfiles/
 
 # Node
 node_modules/

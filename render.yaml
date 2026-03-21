@@ -1,0 +1,23 @@
+databases:
+  - name: pynews-db
+    plan: free
+    databaseName: pynews
+
+services:
+  - type: web
+    name: pynews-api
+    runtime: python
+    plan: free
+    buildCommand: ./build.sh
+    startCommand: gunicorn config.wsgi:application
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pynews-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "false"
+      - key: CORS_ALLOWED_ORIGINS
+        value: "https://pynews.vercel.app"
