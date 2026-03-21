@@ -218,6 +218,7 @@ class Command(BaseCommand):
             published_at=pub_date,
             source_type="crawled",
             source_url=source_url,
+            is_curated=True,
         )
 
         for tag_name in tag_names:
