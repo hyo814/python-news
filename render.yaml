@@ -20,4 +20,4 @@ services:
       - key: DEBUG
         value: "false"
       - key: CORS_ALLOWED_ORIGINS
-        value: "https://pynews.vercel.app"
+        value: "https://python-news-oynnshkvx-hyo814s-projects.vercel.app,https://python-news.vercel.app,https://python-news-hyo814s-projects.vercel.app"
