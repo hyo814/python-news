@@ -21,5 +21,10 @@ staticfiles/
 node_modules/
 frontend/dist/
 
+# Misc
+main.py
+frontend/README.md
+frontend/src/assets/
+
 # OS
 .DS_Store
