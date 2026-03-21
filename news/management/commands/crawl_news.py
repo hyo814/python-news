@@ -36,21 +36,11 @@ RSS_FEEDS = [
         "source": "Planet Python",
         "tags": ["Python"],
     },
-    {
-        "url": "https://pythonweekly.com/rss.xml",
-        "source": "Python Weekly",
-        "tags": ["Python"],
-    },
     # 한국어 소스
     {
         "url": "https://news.hada.io/rss/news",
         "source": "GeekNews",
         "tags": ["Python"],
-    },
-    {
-        "url": "https://www.44bits.io/ko/rss",
-        "source": "44bits",
-        "tags": ["Python", "DevOps"],
     },
     {
         "url": "https://meetup.nhncloud.com/rss",
@@ -79,6 +69,32 @@ PYTHON_KEYWORDS = [
     "python", "파이썬", "django", "fastapi", "flask",
     "celery", "sqlalchemy", "pydantic", "uvicorn", "gunicorn",
     "pip", "poetry", "pytest", "asyncio", "백엔드", "backend",
+]
+
+# 큐레이션 필터 — 가벼운/반복성 콘텐츠 제외
+SKIP_TITLE_PATTERNS = [
+    "quiz:",
+    "quiz –",
+    "office hours",
+    "bonus question",
+]
+
+# 콘텐츠에서 제거할 CTA/광고 패턴
+NOISE_PATTERNS = [
+    "Improve Your Python",
+    "Python Tricks",
+    "Get a short & sweet Python Trick",
+    "Click here to learn more",
+    ">> Click here",
+    "delivered to your inbox",
+    "Subscribe to our newsletter",
+    "Sign up for",
+    "Join our mailing list",
+    "Share on Twitter",
+    "Share on Facebook",
+    "Tweet this",
+    "Read the full article",
+    "Continue reading on",
 ]
 
 
@@ -119,7 +135,7 @@ class Command(BaseCommand):
         source = feed_config["source"]
         tag_names = feed_config["tags"]
         is_korean_source = source in (
-            "GeekNews", "44bits", "NHN Cloud Meetup",
+            "GeekNews", "NHN Cloud Meetup",
             "우아한형제들 기술블로그", "LINE Engineering", "Toss Tech",
         )
 
@@ -153,6 +169,15 @@ class Command(BaseCommand):
         if not title:
             return False
 
+        # 가벼운 콘텐츠 스킵 (퀴즈 등)
+        title_lower = title.lower()
+        if any(p in title_lower for p in SKIP_TITLE_PATTERNS):
+            return False
+
+        # Planet Python 제목에서 저자 prefix 제거 ("Real Python: Title" → "Title")
+        if source == "Planet Python" and ": " in title:
+            title = title.split(": ", 1)[1]
+
         # 한국어 소스는 파이썬 관련 글만 필터링
         if is_korean_source:
             search_text = (title + " " + entry.get("summary", "")).lower()
@@ -161,6 +186,12 @@ class Command(BaseCommand):
 
         published = self._parse_date(entry)
         if published and published < cutoff:
+            return False
+
+        source_url = entry.get("link", "")
+
+        # 같은 원문 URL이 이미 저장된 경우 스킵 (소스 간 중복 방지)
+        if source_url and Post.objects.filter(source_url=source_url).exists():
             return False
 
         slug = slugify(title, allow_unicode=True)[:200]
@@ -173,7 +204,6 @@ class Command(BaseCommand):
         summary = self._extract_summary(entry)
         content = self._extract_content(entry)
         pub_date = published.date() if published else date.today()
-        source_url = entry.get("link", "")
 
         if dry_run:
             self.stdout.write(f"  [DRY RUN] {title}")
@@ -215,7 +245,12 @@ class Command(BaseCommand):
         summary = entry.get("summary", "")
         if summary:
             soup = BeautifulSoup(summary, "html.parser")
-            text = soup.get_text(strip=True)
+            text = soup.get_text(separator=" ", strip=True)
+            # CTA/광고 패턴 제거
+            for noise in NOISE_PATTERNS:
+                text = text.replace(noise, "")
+            # 연속 공백 정리
+            text = " ".join(text.split())
             return text[:300] + ("..." if len(text) > 300 else "")
         return entry.get("title", "")
 
@@ -230,10 +265,46 @@ class Command(BaseCommand):
                 continue
 
             if html:
-                soup = BeautifulSoup(html, "html.parser")
-                return soup.get_text(separator="\n\n", strip=True)
+                return self._clean_html(html)
 
         return entry.get("summary", entry.get("title", ""))
+
+    def _clean_html(self, html):
+        """HTML을 정제된 텍스트로 변환. CTA/광고 제거, 포맷 보존."""
+        soup = BeautifulSoup(html, "html.parser")
+
+        # 불필요한 태그 제거 (광고, 네비게이션, 푸터 등)
+        for tag in soup.find_all(["script", "style", "nav", "footer", "iframe"]):
+            tag.decompose()
+
+        # 인라인 코드를 백틱으로 보존
+        for code in soup.find_all("code"):
+            code.string = f"`{code.get_text()}`"
+
+        # 코드 블록을 보존
+        for pre in soup.find_all("pre"):
+            code_text = pre.get_text()
+            pre.string = f"\n```\n{code_text}\n```\n"
+
+        text = soup.get_text(separator="\n", strip=True)
+
+        # CTA/광고 패턴이 포함된 줄 제거
+        lines = text.split("\n")
+        cleaned = []
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            if any(noise in line for noise in NOISE_PATTERNS):
+                continue
+            # 대괄호로 감싼 CTA 블록 제거 (e.g., "[ Improve Your... ]")
+            if line.startswith("[") and line.endswith("]") and len(line) > 50:
+                continue
+            cleaned.append(line)
+
+        # 연속 빈 줄 정리
+        result = "\n\n".join(cleaned)
+        return result
 
     def _auto_tag(self, post, text):
         """본문/제목 키워드를 분석하여 자동으로 태그 추가"""
@@ -241,13 +312,16 @@ class Command(BaseCommand):
             "Django": ["django", "drf", "django rest"],
             "FastAPI": ["fastapi", "starlette"],
             "Flask": ["flask"],
-            "Database": ["postgres", "mysql", "sqlite", "database", "sql", "orm",
-                         "sqlalchemy", "데이터베이스"],
+            "Database": ["postgres", "mysql", "sqlite", "database", "sql ", "orm",
+                         "sqlalchemy", "데이터베이스", "migration"],
             "DevOps": ["docker", "kubernetes", "k8s", "ci/cd", "deploy", "aws",
                         "배포", "인프라"],
-            "Testing": ["pytest", "unittest", "test", "tdd", "테스트"],
-            "AI/ML": ["machine learning", "ai", "llm", "openai", "langchain", "ml",
-                       "머신러닝", "딥러닝"],
+            "Testing": ["pytest", "unittest", "testing", "tdd", "테스트",
+                         "test-driven", "test driven"],
+            "AI/ML": ["machine learning", "llm", "openai", "langchain",
+                       "머신러닝", "딥러닝", "gpt", "transformer", "neural"],
+            "Async": ["asyncio", "async/await", "비동기", "concurrency",
+                       "uvicorn", "aiohttp"],
         }
 
         text_lower = text.lower()
