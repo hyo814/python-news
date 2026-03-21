@@ -10,8 +10,9 @@ class TagAdmin(admin.ModelAdmin):
 
 @admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
-    list_display = ("title", "source_type", "author", "published_at", "is_featured")
-    list_filter = ("source_type", "tags", "is_featured", "published_at")
+    list_display = ("title", "source_type", "author", "published_at", "is_featured", "is_curated")
+    list_filter = ("source_type", "is_curated", "tags", "is_featured", "published_at")
+    list_editable = ("is_curated",)
     search_fields = ("title", "summary", "content")
     prepopulated_fields = {"slug": ("title",)}
     filter_horizontal = ("tags",)

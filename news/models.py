@@ -32,6 +32,10 @@ class Post(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_featured = models.BooleanField(default=False)
+    is_curated = models.BooleanField(
+        default=False,
+        help_text="큐레이션 승인 여부 (True인 글만 프론트에 노출)",
+    )
 
     class Meta:
         ordering = ["-published_at"]
