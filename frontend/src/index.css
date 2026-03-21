@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Noto Sans KR', system-ui, sans-serif;
+  --font-mono: 'Fira Code', monospace;
+  --color-primary: #306998;
+  --color-primary-light: #4B8BBE;
+  --color-accent: #FFD43B;
+  --color-accent-dark: #F0C419;
+}
