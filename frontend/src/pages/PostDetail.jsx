@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import { fetchPost } from '../api';
+import LoadingState from '../components/LoadingState';
 
 export default function PostDetail() {
   const { slug } = useParams();
@@ -16,7 +17,7 @@ export default function PostDetail() {
   }, [slug]);
 
   if (loading) {
-    return <div className="text-center py-20 text-gray-400 text-base">불러오는 중...</div>;
+    return <LoadingState />;
   }
 
   return (

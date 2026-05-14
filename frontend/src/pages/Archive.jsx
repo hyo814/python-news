@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fetchPosts, fetchTags } from '../api';
 import PostCard from '../components/PostCard';
+import LoadingState from '../components/LoadingState';
 
 export default function Archive() {
   const [posts, setPosts] = useState([]);
@@ -24,7 +25,7 @@ export default function Archive() {
   useEffect(() => { loadData(); }, []);
 
   if (loading) {
-    return <div className="text-center py-20 text-gray-400 text-base">불러오는 중... (서버가 깨어나는 중일 수 있어요)</div>;
+    return <LoadingState />;
   }
 
   if (error) {
